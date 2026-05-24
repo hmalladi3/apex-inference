@@ -1,0 +1,13 @@
+# Binaries
+/apex-inference
+*.test
+*.out
+*.prof
+
+# Editor
+*.swp
+.DS_Store
+
+CLAUDE.md
+docs/
+.claude/
