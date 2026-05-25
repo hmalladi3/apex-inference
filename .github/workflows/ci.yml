@@ -51,7 +51,8 @@ jobs:
             brew install protobuf
           fi
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --workspace --lib
+      - name: unit + integration tests
+        run: cargo test --workspace
 
   build:
     name: release build
@@ -63,3 +64,67 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --release --workspace
+
+  wire-compat:
+    name: tritonclient wire compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - uses: Swatinem/rust-cache@v2
+      - name: install python deps
+        run: pip install --upgrade pip && pip install 'tritonclient[grpc]' numpy
+      - name: build apex-inference (release)
+        run: cargo build --release --bin apex-inference
+      - name: write test config
+        run: |
+          cat > /tmp/apex-wire.yaml <<EOF
+          server:
+            listen: "127.0.0.1:9000"
+            request_timeout_secs: 30
+            shutdown_grace_secs: 5
+            max_request_bytes: 67108864
+          admission:
+            max_rss_bytes: 8589934592
+            max_queue_depth: 1024
+            rss_sample_interval_ms: 100
+          models:
+            - name: doubler
+              version: "1"
+              path: ${{ github.workspace }}/tests/fixtures/doubler.onnx
+              kind: fixed_shape
+              max_batch_size: 4
+              max_queue_delay_us: 1000
+              intra_op_threads: 1
+          EOF
+      - name: start apex-inference
+        run: |
+          ./target/release/apex-inference --config /tmp/apex-wire.yaml >/tmp/apex.log 2>&1 &
+          echo $! > /tmp/apex.pid
+          for i in $(seq 1 30); do
+            if nc -z 127.0.0.1 9000 2>/dev/null; then
+              echo "server up after ${i}s"
+              sleep 1
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "server failed to start"
+          cat /tmp/apex.log
+          exit 1
+      - name: run tritonclient wire-compat test
+        run: python tests/python/test_tritonclient.py localhost:9000
+      - name: dump server log on failure
+        if: failure()
+        run: cat /tmp/apex.log || true
+      - name: stop apex-inference
+        if: always()
+        run: |
+          if [ -f /tmp/apex.pid ]; then
+            kill "$(cat /tmp/apex.pid)" 2>/dev/null || true
+          fi

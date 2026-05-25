@@ -24,3 +24,6 @@ anyhow = { workspace = true }
 
 [build-dependencies]
 tonic-build = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
