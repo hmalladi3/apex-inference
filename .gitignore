@@ -1,8 +1,5 @@
-# Binaries
-/apex-inference
-*.test
-*.out
-*.prof
+# Build
+/target
 
 # Editor
 *.swp

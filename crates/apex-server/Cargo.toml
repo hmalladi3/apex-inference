@@ -1,0 +1,26 @@
+[package]
+name = "apex-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "apex-inference: KServe v2 gRPC inference server"
+
+[[bin]]
+name = "apex-inference"
+path = "src/main.rs"
+
+[dependencies]
+apex-core = { path = "../apex-core" }
+tokio = { workspace = true }
+tonic = { workspace = true }
+prost = { workspace = true }
+clap = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+prometheus = { workspace = true }
+axum = { workspace = true }
+arc-swap = { workspace = true }
+anyhow = { workspace = true }
+
+[build-dependencies]
+tonic-build = { workspace = true }

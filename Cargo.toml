@@ -1,0 +1,37 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/apex-core",
+    "crates/apex-server",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+tokio = { version = "1", features = ["full"] }
+tonic = "0.12"
+tonic-build = "0.12"
+prost = "0.13"
+ort = { version = "=2.0.0-rc.12", features = ["download-binaries", "ndarray"] }
+ndarray = "0.17"
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+arc-swap = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+prometheus = "0.13"
+bytes = "1"
+thiserror = "1"
+clap = { version = "4", features = ["derive", "env"] }
+sha2 = "0.10"
+axum = "0.7"
+hyper = "1"
+anyhow = "1"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

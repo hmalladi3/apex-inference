@@ -1,0 +1,36 @@
+server:
+  listen: "0.0.0.0:9000"
+  request_timeout_secs: 30
+  shutdown_grace_secs: 30
+  max_request_bytes: 67108864    # 64 MiB
+
+observability:
+  metrics_listen: "0.0.0.0:9090"
+  log_format: json
+  log_level: info
+
+admission:
+  max_rss_bytes: 8589934592      # 8 GiB
+  max_queue_depth: 1024
+  rss_sample_interval_ms: 100
+
+models:
+  - name: resnet50
+    version: "1"
+    path: /models/resnet50.onnx
+    kind: fixed_shape
+    max_batch_size: 32
+    max_queue_delay_us: 4000
+    intra_op_threads: 4
+    runtime: blocking
+
+  - name: bert-base-qa
+    version: "1"
+    path: /models/bert.onnx
+    kind: ragged
+    max_batch_size: 8
+    max_queue_delay_us: 20000
+    intra_op_threads: 4
+    runtime: blocking
+    seq_len_buckets: [64, 128, 256, 512]
+    requires_attention_mask: true
