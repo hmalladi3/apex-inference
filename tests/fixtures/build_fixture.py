@@ -1,12 +1,15 @@
 """
-Build a minimal ONNX model used by integration tests.
+Build minimal ONNX models used by integration tests.
 
-The model is a "doubler": output = input * 2.0.
-- Input:  {name: "input",  dtype: FP32, shape: [-1, 4]}  (dynamic batch dim)
-- Output: {name: "output", dtype: FP32, shape: [-1, 4]}
+Two fixtures, both shape [-1, 4] FP32:
+- doubler: output = input * 2.0
+- tripler: output = input * 3.0
 
-Run this once to regenerate tests/fixtures/doubler.onnx. The .onnx file is
-committed to the repo so CI doesn't need Python to run the Rust e2e test.
+The pair lets multi-model + reload tests route between distinct models
+and verify each one is wired correctly.
+
+Run this once to regenerate the .onnx files. The .onnx files are committed
+to the repo so CI doesn't need Python to run the Rust integration tests.
 
 Requirements: onnx, numpy (pip install onnx numpy).
 """
@@ -20,7 +23,7 @@ import onnx
 from onnx import TensorProto, helper, numpy_helper
 
 
-def build() -> onnx.ModelProto:
+def build(scalar: float, name: str) -> onnx.ModelProto:
     input_tensor = helper.make_tensor_value_info(
         "input", TensorProto.FLOAT, [-1, 4]
     )
@@ -28,7 +31,7 @@ def build() -> onnx.ModelProto:
         "output", TensorProto.FLOAT, [-1, 4]
     )
     multiplier = numpy_helper.from_array(
-        np.full((1, 4), 2.0, dtype=np.float32),
+        np.full((1, 4), scalar, dtype=np.float32),
         name="multiplier",
     )
     mul_node = helper.make_node(
@@ -36,7 +39,7 @@ def build() -> onnx.ModelProto:
     )
     graph = helper.make_graph(
         nodes=[mul_node],
-        name="doubler",
+        name=name,
         inputs=[input_tensor],
         outputs=[output_tensor],
         initializer=[multiplier],
@@ -51,11 +54,12 @@ def build() -> onnx.ModelProto:
 
 
 def main() -> None:
-    out_path = os.path.join(os.path.dirname(__file__), "doubler.onnx")
-    model = build()
-    onnx.save(model, out_path)
-    size = os.path.getsize(out_path)
-    print(f"wrote {out_path} ({size} bytes)")
+    here = os.path.dirname(__file__)
+    for name, scalar in [("doubler", 2.0), ("tripler", 3.0)]:
+        out_path = os.path.join(here, f"{name}.onnx")
+        onnx.save(build(scalar, name), out_path)
+        size = os.path.getsize(out_path)
+        print(f"wrote {out_path} ({size} bytes)")
 
 
 if __name__ == "__main__":
