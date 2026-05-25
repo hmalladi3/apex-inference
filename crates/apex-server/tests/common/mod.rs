@@ -142,6 +142,16 @@ pub async fn wait_for_model_gone(
 }
 
 pub async fn infer(client: &mut ApexClient, model: &str, payload: &[f32]) -> Vec<f32> {
+    try_infer(client, model, payload)
+        .await
+        .unwrap_or_else(|e| panic!("model_infer({model}) failed: {e}"))
+}
+
+pub async fn try_infer(
+    client: &mut ApexClient,
+    model: &str,
+    payload: &[f32],
+) -> Result<Vec<f32>, tonic::Status> {
     let raw_bytes: Vec<u8> = payload.iter().flat_map(|f| f.to_ne_bytes()).collect();
     let req = ModelInferRequest {
         model_name: model.to_string(),
@@ -158,16 +168,45 @@ pub async fn infer(client: &mut ApexClient, model: &str, payload: &[f32]) -> Vec
         outputs: vec![],
         raw_input_contents: vec![raw_bytes],
     };
-    let resp = client
-        .model_infer(req)
-        .await
-        .expect("model_infer")
-        .into_inner();
-    assert_eq!(resp.raw_output_contents.len(), 1, "expected one output");
-    resp.raw_output_contents[0]
+    let resp = client.model_infer(req).await?.into_inner();
+    if resp.raw_output_contents.len() != 1 {
+        return Err(tonic::Status::internal(format!(
+            "expected one output, got {}",
+            resp.raw_output_contents.len()
+        )));
+    }
+    Ok(resp.raw_output_contents[0]
         .chunks_exact(4)
         .map(|c| f32::from_ne_bytes([c[0], c[1], c[2], c[3]]))
-        .collect()
+        .collect())
+}
+
+/// Variant of `write_config` that also accepts admission overrides.
+pub fn write_config_with_admission(
+    path: &Path,
+    port: u16,
+    models: &[(&str, &str)],
+    max_rss_bytes: u64,
+    max_queue_depth: usize,
+) {
+    let model_entries: String = models
+        .iter()
+        .map(|(name, fixture)| {
+            format!(
+                "  - name: {name}\n    version: \"1\"\n    path: {fp}\n    kind: fixed_shape\n    max_batch_size: 4\n    max_queue_delay_us: 200\n    intra_op_threads: 1\n",
+                name = name,
+                fp = fixture_path(fixture).display()
+            )
+        })
+        .collect();
+    let cfg = format!(
+        "server:\n  listen: \"127.0.0.1:{port}\"\n  request_timeout_secs: 30\n  shutdown_grace_secs: 5\n  max_request_bytes: 67108864\nadmission:\n  max_rss_bytes: {max_rss_bytes}\n  max_queue_depth: {max_queue_depth}\n  rss_sample_interval_ms: 50\nmodels:\n{model_entries}",
+        port = port,
+        max_rss_bytes = max_rss_bytes,
+        max_queue_depth = max_queue_depth,
+        model_entries = model_entries
+    );
+    std::fs::write(path, cfg).expect("write config");
 }
 
 pub fn send_sighup(pid: u32) {
