@@ -168,7 +168,11 @@ impl AdmissionController {
                 tracing::warn!(rss = rss, limit = limit, "admission rejected: memory");
             }
             AdmissionDecision::RejectQueueDepth { depth, limit } => {
-                tracing::warn!(depth = depth, limit = limit, "admission rejected: queue depth");
+                tracing::warn!(
+                    depth = depth,
+                    limit = limit,
+                    "admission rejected: queue depth"
+                );
             }
             AdmissionDecision::Admit => {}
         }
@@ -240,7 +244,10 @@ pub(crate) fn read_process_rss() -> Result<u64, std::io::Error> {
         .nth(1)
         .and_then(|p| p.parse().ok())
         .ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::InvalidData, "malformed /proc/self/statm")
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "malformed /proc/self/statm",
+            )
         })?;
     // SAFETY: sysconf with _SC_PAGESIZE is a documented, signal-safe call returning page size in bytes.
     let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) } as u64;

@@ -46,8 +46,11 @@ pub struct DispatcherMetrics {
 impl DispatcherMetrics {
     pub fn register(registry: &Registry) -> Result<Self, prometheus::Error> {
         let batch_size = HistogramVec::new(
-            HistogramOpts::new("apex_dispatcher_batch_size", "size of each dispatched batch")
-                .buckets(vec![1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0]),
+            HistogramOpts::new(
+                "apex_dispatcher_batch_size",
+                "size of each dispatched batch",
+            )
+            .buckets(vec![1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0]),
             &["model"],
         )?;
         let batch_latency_ms = HistogramVec::new(
@@ -132,22 +135,40 @@ impl BoundMetrics {
     }
 
     fn observe_batch_size(&self, n: usize) {
-        self.inner.batch_size.with_label_values(&[&self.model]).observe(n as f64);
+        self.inner
+            .batch_size
+            .with_label_values(&[&self.model])
+            .observe(n as f64);
     }
     fn observe_batch_latency(&self, ms: f64) {
-        self.inner.batch_latency_ms.with_label_values(&[&self.model]).observe(ms);
+        self.inner
+            .batch_latency_ms
+            .with_label_values(&[&self.model])
+            .observe(ms);
     }
     fn observe_wait_time(&self, ms: f64) {
-        self.inner.wait_time_ms.with_label_values(&[&self.model]).observe(ms);
+        self.inner
+            .wait_time_ms
+            .with_label_values(&[&self.model])
+            .observe(ms);
     }
     fn incr_dispatch_reason(&self, reason: &str) {
-        self.inner.dispatch_reason.with_label_values(&[&self.model, reason]).inc();
+        self.inner
+            .dispatch_reason
+            .with_label_values(&[&self.model, reason])
+            .inc();
     }
     fn incr_batch_errors(&self) {
-        self.inner.batch_errors.with_label_values(&[&self.model]).inc();
+        self.inner
+            .batch_errors
+            .with_label_values(&[&self.model])
+            .inc();
     }
     fn set_queue_depth(&self, depth: i64) {
-        self.inner.queue_depth.with_label_values(&[&self.model]).set(depth);
+        self.inner
+            .queue_depth
+            .with_label_values(&[&self.model])
+            .set(depth);
     }
     pub fn incr_overflow(&self) {
         self.inner.overflow.with_label_values(&[&self.model]).inc();
@@ -342,10 +363,7 @@ mod tests {
     #[test]
     fn batch_buffer_pads_short_requests_with_zero() {
         let bpr = 4;
-        let batch = vec![
-            req_with_bytes(vec![1, 2]),
-            req_with_bytes(vec![5, 6, 7, 8]),
-        ];
+        let batch = vec![req_with_bytes(vec![1, 2]), req_with_bytes(vec![5, 6, 7, 8])];
         let buf = build_batch_buffer(&batch, bpr);
         assert_eq!(buf, vec![1, 2, 0, 0, 5, 6, 7, 8]);
     }

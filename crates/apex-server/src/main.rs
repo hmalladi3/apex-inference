@@ -24,7 +24,11 @@ use crate::proto::grpc_inference_service_server::GrpcInferenceServiceServer;
 const DEFAULT_RSS_BUDGET_BYTES: u64 = 8 * 1024 * 1024 * 1024;
 
 #[derive(Parser)]
-#[command(name = "apex-inference", version, about = "KServe v2 ONNX inference server")]
+#[command(
+    name = "apex-inference",
+    version,
+    about = "KServe v2 ONNX inference server"
+)]
 struct Args {
     /// Path to the YAML config file.
     #[arg(long, env = "APEX_CONFIG")]
@@ -54,10 +58,14 @@ async fn main() -> anyhow::Result<()> {
         .admission
         .max_rss_bytes
         .unwrap_or(DEFAULT_RSS_BUDGET_BYTES);
-    let admission_max_queue_depth = config
-        .admission
-        .max_queue_depth
-        .unwrap_or_else(|| config.models.iter().map(|m| m.max_batch_size).sum::<usize>() * 10);
+    let admission_max_queue_depth = config.admission.max_queue_depth.unwrap_or_else(|| {
+        config
+            .models
+            .iter()
+            .map(|m| m.max_batch_size)
+            .sum::<usize>()
+            * 10
+    });
 
     let admission_controller = Arc::new(
         AdmissionController::new(admission_max_rss, admission_max_queue_depth, &prom_registry)
@@ -66,11 +74,9 @@ async fn main() -> anyhow::Result<()> {
     let dispatcher_metrics = Arc::new(
         DispatcherMetrics::register(&prom_registry).context("registering dispatcher metrics")?,
     );
-    let reload_metrics = Arc::new(
-        ReloadMetrics::register(&prom_registry).context("registering reload metrics")?,
-    );
-    let grpc_metrics =
-        GrpcMetrics::register(&prom_registry).context("registering gRPC metrics")?;
+    let reload_metrics =
+        Arc::new(ReloadMetrics::register(&prom_registry).context("registering reload metrics")?);
+    let grpc_metrics = GrpcMetrics::register(&prom_registry).context("registering gRPC metrics")?;
 
     let _rss_sampler = admission::spawn_rss_sampler(
         admission_controller.clone(),

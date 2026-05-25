@@ -173,14 +173,14 @@ impl ModelConfig {
                         )));
                     }
                 }
-                if let Some(&max) = buckets.iter().max() {
-                    if max > 65_536 {
-                        return Err(ConfigError::Validation(format!(
-                            "{}: seq_len_buckets values must be ≤ 65536, got {}",
-                            self.ident(),
-                            max
-                        )));
-                    }
+                if let Some(&max) = buckets.iter().max()
+                    && max > 65_536
+                {
+                    return Err(ConfigError::Validation(format!(
+                        "{}: seq_len_buckets values must be ≤ 65536, got {}",
+                        self.ident(),
+                        max
+                    )));
                 }
             }
         }
@@ -254,7 +254,11 @@ mod tests {
                     requires_attention_mask: false,
                 }],
             };
-            Self { config, _model_file: model_file, _tmpdir: tmpdir }
+            Self {
+                config,
+                _model_file: model_file,
+                _tmpdir: tmpdir,
+            }
         }
     }
 
@@ -391,7 +395,9 @@ mod tests {
         };
         alt.version = "2".to_string();
         f.config.models.push(alt);
-        f.config.validate().expect("(name, v1) and (name, v2) should validate");
+        f.config
+            .validate()
+            .expect("(name, v1) and (name, v2) should validate");
     }
 
     #[test]

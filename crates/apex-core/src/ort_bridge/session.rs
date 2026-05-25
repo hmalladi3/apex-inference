@@ -52,11 +52,12 @@ fn outlet_to_meta(outlet: &Outlet, require_dynamic_batch: bool) -> Result<Tensor
         });
     }
 
-    let element_type = value_type
-        .tensor_type()
-        .ok_or_else(|| BridgeError::UnsupportedInputType {
-            description: "missing tensor element type".to_string(),
-        })?;
+    let element_type =
+        value_type
+            .tensor_type()
+            .ok_or_else(|| BridgeError::UnsupportedInputType {
+                description: "missing tensor element type".to_string(),
+            })?;
     let dtype = element_type_to_dtype(element_type)?;
 
     let shape = value_type
@@ -108,12 +109,13 @@ pub(super) fn validate_input_size(
     batch_n: usize,
     bytes_per_request: usize,
 ) -> Result<(), BridgeError> {
-    let expected = batch_n
-        .checked_mul(bytes_per_request)
-        .ok_or(BridgeError::InputSizeMismatch {
-            expected: usize::MAX,
-            actual,
-        })?;
+    let expected =
+        batch_n
+            .checked_mul(bytes_per_request)
+            .ok_or(BridgeError::InputSizeMismatch {
+                expected: usize::MAX,
+                actual,
+            })?;
     if actual != expected {
         return Err(BridgeError::InputSizeMismatch { expected, actual });
     }

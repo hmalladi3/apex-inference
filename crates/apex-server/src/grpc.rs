@@ -11,9 +11,7 @@ use apex_core::dispatcher::PendingRequest;
 use apex_core::error::BridgeError;
 use apex_core::ort_bridge::DType;
 use apex_core::registry::SharedRegistry;
-use prometheus::{
-    HistogramOpts, HistogramVec, IntCounterVec, IntGauge, Opts, Registry,
-};
+use prometheus::{HistogramOpts, HistogramVec, IntCounterVec, IntGauge, Opts, Registry};
 use tokio::sync::{mpsc::error::TrySendError, oneshot};
 use tonic::{Request, Response, Status};
 
@@ -22,8 +20,7 @@ use crate::proto::{
     InferParameter, ModelInferRequest, ModelInferResponse, ModelMetadataRequest,
     ModelMetadataResponse, ModelReadyRequest, ModelReadyResponse, ServerLiveRequest,
     ServerLiveResponse, ServerMetadataRequest, ServerMetadataResponse, ServerReadyRequest,
-    ServerReadyResponse,
-    model_infer_response::InferOutputTensor,
+    ServerReadyResponse, model_infer_response::InferOutputTensor,
     model_metadata_response::TensorMetadata,
 };
 
@@ -59,7 +56,12 @@ impl GrpcMetrics {
                 "inline tensor payload size per ModelInfer",
             )
             .buckets(vec![
-                1_024.0, 16_384.0, 262_144.0, 1_048_576.0, 16_777_216.0, 67_108_864.0,
+                1_024.0,
+                16_384.0,
+                262_144.0,
+                1_048_576.0,
+                16_777_216.0,
+                67_108_864.0,
             ]),
             &["model"],
         )?;
@@ -169,10 +171,8 @@ impl GrpcInferenceService for InferenceService {
         let entry = match r.get(&req.name, version_or_none(&req.version)) {
             Some(e) => e,
             None => {
-                let status = Status::not_found(format!(
-                    "model not found: {}/{}",
-                    req.name, req.version
-                ));
+                let status =
+                    Status::not_found(format!("model not found: {}/{}", req.name, req.version));
                 self.record("ModelMetadata", started, &Err(status.clone()));
                 return Err(status);
             }
@@ -322,9 +322,10 @@ impl InferenceService {
         if let Err(e) = entry.tx.try_send(pending) {
             self.admission.decr_queue(1);
             return match e {
-                TrySendError::Full(_) => {
-                    Err(Status::resource_exhausted(format!("queue full for {}", entry.name)))
-                }
+                TrySendError::Full(_) => Err(Status::resource_exhausted(format!(
+                    "queue full for {}",
+                    entry.name
+                ))),
                 TrySendError::Closed(_) => Err(Status::not_found(format!(
                     "model {} no longer accepting requests",
                     entry.name
@@ -375,7 +376,11 @@ impl InferenceService {
 }
 
 fn version_or_none(version: &str) -> Option<&str> {
-    if version.is_empty() { None } else { Some(version) }
+    if version.is_empty() {
+        None
+    } else {
+        Some(version)
+    }
 }
 
 fn dtype_to_kserve(dt: DType) -> String {

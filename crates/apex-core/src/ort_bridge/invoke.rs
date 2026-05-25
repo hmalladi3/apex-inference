@@ -26,7 +26,11 @@ pub(super) fn run_blocking(
     input_meta: &TensorMeta,
     output_meta: &[TensorMeta],
 ) -> Result<BatchOutput, BridgeError> {
-    validate_input_size(batch.input_bytes.len(), batch.batch_n, input_meta.bytes_per_request)?;
+    validate_input_size(
+        batch.input_bytes.len(),
+        batch.batch_n,
+        input_meta.bytes_per_request,
+    )?;
 
     match input_meta.dtype {
         DType::F32 => run_f32(session, batch, input_meta, output_meta),
@@ -60,7 +64,9 @@ fn run_f32(
     // (including NaN/subnormal), so no UB from invalid bit patterns. The slice
     // borrow is scoped to this function and outlives all downstream use.
     let typed: &[f32] = unsafe {
-        debug_assert!(batch.input_bytes.as_ptr() as usize % core::mem::align_of::<f32>() == 0);
+        debug_assert!(
+            (batch.input_bytes.as_ptr() as usize).is_multiple_of(core::mem::align_of::<f32>())
+        );
         core::slice::from_raw_parts(
             batch.input_bytes.as_ptr() as *const f32,
             batch.input_bytes.len() / 4,

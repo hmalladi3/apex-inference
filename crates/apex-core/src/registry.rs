@@ -6,8 +6,8 @@
 //! will land in v1.1 alongside i64 input dtype and attention-mask generation.
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::{Arc, Mutex};
 
 use arc_swap::ArcSwap;
 use tokio::sync::mpsc;
@@ -24,7 +24,9 @@ pub struct ModelRegistry {
 
 impl ModelRegistry {
     pub fn empty() -> Self {
-        Self { inner: HashMap::new() }
+        Self {
+            inner: HashMap::new(),
+        }
     }
 
     pub fn from_entries(entries: Vec<Arc<ModelEntry>>) -> Self {
@@ -100,7 +102,9 @@ pub struct AtomicEntryState {
 
 impl AtomicEntryState {
     pub fn new(state: EntryState) -> Self {
-        Self { inner: AtomicU8::new(state as u8) }
+        Self {
+            inner: AtomicU8::new(state as u8),
+        }
     }
 
     pub fn load(&self) -> EntryState {
@@ -137,15 +141,24 @@ mod tests {
     use super::*;
 
     fn map<const N: usize>(entries: [(&str, &str); N]) -> HashMap<String, String> {
-        entries.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
+        entries
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect()
     }
 
     /// @spec INGRESS-INFER-013
     #[test]
     fn lookup_with_explicit_version_returns_exact_match() {
         let versions = map([("1", "v1-payload"), ("2", "v2-payload")]);
-        assert_eq!(lookup_version(&versions, Some("1")), Some(&"v1-payload".to_string()));
-        assert_eq!(lookup_version(&versions, Some("2")), Some(&"v2-payload".to_string()));
+        assert_eq!(
+            lookup_version(&versions, Some("1")),
+            Some(&"v1-payload".to_string())
+        );
+        assert_eq!(
+            lookup_version(&versions, Some("2")),
+            Some(&"v2-payload".to_string())
+        );
     }
 
     #[test]

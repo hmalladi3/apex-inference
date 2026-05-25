@@ -8,7 +8,9 @@ pub enum BridgeError {
     #[error("model has static batch dimension; engine requires dynamic")]
     ModelNotBatchable,
 
-    #[error("unsupported tensor dtype in v1: {dtype} (v1 supports F32 only; I64/F16 planned for v1.1)")]
+    #[error(
+        "unsupported tensor dtype in v1: {dtype} (v1 supports F32 only; I64/F16 planned for v1.1)"
+    )]
     UnsupportedDtype { dtype: String },
 
     #[error("unsupported input value type: {description}")]

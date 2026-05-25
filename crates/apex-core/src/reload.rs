@@ -15,9 +15,7 @@ use crate::config::{Config, ModelConfig};
 use crate::dispatcher::{self, BoundMetrics, BucketConfig, DispatcherMetrics};
 use crate::error::ConfigError;
 use crate::ort_bridge::ModelBridge;
-use crate::registry::{
-    AtomicEntryState, EntryState, ModelEntry, ModelRegistry, SharedRegistry,
-};
+use crate::registry::{AtomicEntryState, EntryState, ModelEntry, ModelRegistry, SharedRegistry};
 
 #[derive(Clone)]
 pub struct ReloadMetrics {
@@ -35,7 +33,10 @@ impl ReloadMetrics {
             "first 8 bytes of SHA-256(config) as a u64",
         )?;
         let reload_total = IntCounterVec::new(
-            Opts::new("apex_config_reload_total", "config reload attempts by outcome"),
+            Opts::new(
+                "apex_config_reload_total",
+                "config reload attempts by outcome",
+            ),
             &["outcome"],
         )?;
         let reload_duration = Histogram::with_opts(
@@ -52,10 +53,7 @@ impl ReloadMetrics {
             )
             .buckets(vec![0.01, 0.1, 0.5, 1.0, 5.0, 30.0, 120.0]),
         )?;
-        let models_loaded = IntGauge::new(
-            "apex_models_loaded",
-            "current count of loaded models",
-        )?;
+        let models_loaded = IntGauge::new("apex_models_loaded", "current count of loaded models")?;
 
         registry.register(Box::new(version_hash.clone()))?;
         registry.register(Box::new(reload_total.clone()))?;

@@ -88,19 +88,17 @@ impl ModelBridge {
         let output_meta = self.output_meta.clone();
 
         match self.runtime {
-            BridgeRuntime::Blocking => {
-                tokio::task::spawn_blocking(move || {
-                    invoke::run_blocking(&session, batch, &input_meta, &output_meta)
-                })
-                .await
-                .map_err(|e| {
-                    if e.is_panic() {
-                        BridgeError::DispatchPanic(format!("{e}"))
-                    } else {
-                        BridgeError::RunFailed(format!("spawn_blocking failed: {e}"))
-                    }
-                })?
-            }
+            BridgeRuntime::Blocking => tokio::task::spawn_blocking(move || {
+                invoke::run_blocking(&session, batch, &input_meta, &output_meta)
+            })
+            .await
+            .map_err(|e| {
+                if e.is_panic() {
+                    BridgeError::DispatchPanic(format!("{e}"))
+                } else {
+                    BridgeError::RunFailed(format!("spawn_blocking failed: {e}"))
+                }
+            })?,
             BridgeRuntime::DedicatedThread => Err(BridgeError::RunFailed(
                 "DedicatedThread runtime not implemented in v1; see ort-bridge LLD".to_string(),
             )),
