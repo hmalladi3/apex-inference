@@ -30,6 +30,7 @@ sha2 = "0.10"
 axum = "0.7"
 hyper = "1"
 anyhow = "1"
+criterion = { version = "0.5", features = ["html_reports"] }
 
 [profile.release]
 lto = "thin"

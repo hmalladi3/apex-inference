@@ -153,6 +153,31 @@ kill -HUP $(pgrep apex-inference)
 
 Structured JSON logs via `tracing-subscriber`. Each `ModelInfer` span carries `model`, `model_version`, and a generated `request_id` field, propagated into the dispatcher task.
 
+## Benchmarks
+
+Hot-path microbenchmarks (`cargo bench --bench hot_paths`, Apple M-class CPU):
+
+| Bench                                     | Measured              | Spec target |
+|-------------------------------------------|-----------------------|-------------|
+| `admission_check` (admit path)            | **866 ps**            | <100 ns     |
+| `admission round-trip` (check + record + incr/decr) | **44 ns**   | —           |
+| `build_batch_buffer` (224×224×3 FP32, batch=32) | **557 µs** (~32 GiB/s) | — |
+| `slice_per_request` (1000-element f32 output) | **70 ns / request** | — |
+
+End-to-end latency over the wire (Python `tritonclient.grpc` → apex → ORT → response, single client, doubler fixture, release build):
+
+| Configuration                  | p50      | p99      | p99.9    | QPS  |
+|--------------------------------|----------|----------|----------|------|
+| `max_queue_delay_us: 1000`     | 2.48 ms  | 3.07 ms  | 4.28 ms  | 397  |
+| `max_queue_delay_us: 100`      | 1.34 ms  | 2.56 ms  | 3.02 ms  | 695  |
+
+Most of the wall-clock latency in the e2e numbers is Python serialization and `tritonclient` overhead, not the engine — the admission hot path and batch buffer construction together cost <1 µs. The batch-window setting is the dominant latency knob for single-client workloads. To measure under load:
+
+```bash
+cargo bench --bench hot_paths                    # rust microbenches (HTML report in target/criterion/)
+python tests/python/bench.py --iters 2000        # e2e latency + QPS via tritonclient
+```
+
 ## Repository layout
 
 ```

@@ -27,3 +27,9 @@ libc = "0.2"
 
 [dev-dependencies]
 tempfile = "3"
+criterion = { workspace = true }
+tokio = { workspace = true }
+
+[[bench]]
+name = "hot_paths"
+harness = false

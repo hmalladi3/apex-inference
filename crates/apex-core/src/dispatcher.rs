@@ -288,8 +288,12 @@ async fn dispatch_batch(
     }
 }
 
+/// Pack per-request bytes into a single contiguous batch buffer. Public so
+/// benchmarks can target it directly without going through the full
+/// scheduler loop.
+///
 /// @spec SCHED-BUF-001, SCHED-BUF-002
-pub(crate) fn build_batch_buffer(batch: &[PendingRequest], bytes_per_request: usize) -> Vec<u8> {
+pub fn build_batch_buffer(batch: &[PendingRequest], bytes_per_request: usize) -> Vec<u8> {
     let mut buf = vec![0u8; batch.len() * bytes_per_request];
     for (i, req) in batch.iter().enumerate() {
         let copy_len = req.input_bytes.len().min(bytes_per_request);
@@ -315,7 +319,8 @@ fn scatter_error(batch: Vec<PendingRequest>, err: BridgeError) {
     }
 }
 
-pub(crate) fn slice_per_request(out: &BatchOutput, i: usize, batch_n: usize) -> PerRequestOutput {
+/// Slice one request's portion of a batched output. Public for benchmarks.
+pub fn slice_per_request(out: &BatchOutput, i: usize, batch_n: usize) -> PerRequestOutput {
     let outputs = out
         .outputs
         .iter()
