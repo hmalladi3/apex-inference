@@ -128,7 +128,10 @@ models:
     max_batch_size: 32
     max_queue_delay_us: 4000
     intra_op_threads: 4
+    queue_capacity: 256       # per-model request queue depth (default: max_batch_size * 8)
 ```
+
+**Backpressure has two layers.** Each model has its own bounded request queue (`queue_capacity`); when it fills, the gRPC handler returns `RESOURCE_EXHAUSTED` for that model. The admission controller's `max_queue_depth` is the *global* cap across all models. Tune `queue_capacity` per model for burst tolerance; the engine sheds cleanly rather than growing an unbounded queue.
 
 Reload models without dropping inflight requests:
 

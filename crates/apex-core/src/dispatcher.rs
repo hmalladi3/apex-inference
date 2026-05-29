@@ -30,6 +30,9 @@ pub struct PerRequestOutput {
 pub struct BucketConfig {
     pub max_batch_size: usize,
     pub max_queue_delay: Duration,
+    /// Depth of the request channel. Per-model backpressure: a full channel
+    /// makes the gRPC handler return RESOURCE_EXHAUSTED.
+    pub queue_capacity: usize,
 }
 
 #[derive(Clone)]
@@ -184,7 +187,7 @@ pub fn spawn(
     config: BucketConfig,
     metrics: BoundMetrics,
 ) -> (mpsc::Sender<PendingRequest>, JoinHandle<()>) {
-    let (tx, rx) = mpsc::channel(config.max_batch_size.saturating_mul(2));
+    let (tx, rx) = mpsc::channel(config.queue_capacity.max(config.max_batch_size));
     let handle = tokio::spawn(run_loop(bridge, rx, config, metrics));
     (tx, handle)
 }

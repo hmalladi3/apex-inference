@@ -101,6 +101,7 @@ async fn build_entry(
     let bucket_cfg = BucketConfig {
         max_batch_size: cfg.max_batch_size,
         max_queue_delay: Duration::from_micros(cfg.max_queue_delay_us),
+        queue_capacity: cfg.resolved_queue_capacity(),
     };
     let bound = BoundMetrics::new(cfg.name.clone(), dispatcher_metrics);
     let (tx, handle) = dispatcher::spawn(bridge.clone(), bucket_cfg, bound);
@@ -349,6 +350,7 @@ mod tests {
                 max_batch_size: 1,
                 max_queue_delay_us: 1000,
                 intra_op_threads: 1,
+                queue_capacity: None,
                 runtime: BridgeRuntimeKind::Blocking,
                 seq_len_buckets: None,
                 requires_attention_mask: false,

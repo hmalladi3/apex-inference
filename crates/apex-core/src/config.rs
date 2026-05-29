@@ -67,11 +67,24 @@ pub struct ModelConfig {
     pub max_batch_size: usize,
     pub max_queue_delay_us: u64,
     pub intra_op_threads: usize,
+    /// Depth of the per-model request queue. Governs per-model backpressure:
+    /// when full, the gRPC handler returns RESOURCE_EXHAUSTED. Distinct from
+    /// `admission.max_queue_depth`, which is the global cap across all models.
+    /// Defaults to `max_batch_size * 8`.
+    pub queue_capacity: Option<usize>,
     #[serde(default)]
     pub runtime: BridgeRuntimeKind,
     pub seq_len_buckets: Option<Vec<u32>>,
     #[serde(default)]
     pub requires_attention_mask: bool,
+}
+
+impl ModelConfig {
+    /// Resolved per-model queue depth. See `queue_capacity` field docs.
+    pub fn resolved_queue_capacity(&self) -> usize {
+        self.queue_capacity
+            .unwrap_or(self.max_batch_size.saturating_mul(8))
+    }
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
@@ -141,6 +154,16 @@ impl ModelConfig {
                 "{}: max_queue_delay_us must be in [100, 1_000_000], got {}",
                 self.ident(),
                 self.max_queue_delay_us
+            )));
+        }
+        if let Some(cap) = self.queue_capacity
+            && cap < self.max_batch_size
+        {
+            return Err(ConfigError::Validation(format!(
+                "{}: queue_capacity ({}) must be >= max_batch_size ({})",
+                self.ident(),
+                cap,
+                self.max_batch_size
             )));
         }
         match self.kind {
@@ -249,6 +272,7 @@ mod tests {
                     max_batch_size: 32,
                     max_queue_delay_us: 4000,
                     intra_op_threads: 4,
+                    queue_capacity: None,
                     runtime: BridgeRuntimeKind::Blocking,
                     seq_len_buckets: None,
                     requires_attention_mask: false,
@@ -295,6 +319,22 @@ mod tests {
         let mut f = Fixture::new();
         f.config.models[0].max_batch_size = 0;
         assert_validation_err(f.config.validate(), "max_batch_size");
+    }
+
+    /// @spec CONFIG-VAL-010
+    #[test]
+    fn queue_capacity_below_max_batch_size_fails() {
+        let mut f = Fixture::new();
+        f.config.models[0].max_batch_size = 32;
+        f.config.models[0].queue_capacity = Some(8);
+        assert_validation_err(f.config.validate(), "queue_capacity");
+    }
+
+    /// @spec CONFIG-VAL-010
+    #[test]
+    fn queue_capacity_default_is_max_batch_size_times_eight() {
+        let f = Fixture::new();
+        assert_eq!(f.config.models[0].resolved_queue_capacity(), 32 * 8);
     }
 
     /// @spec CONFIG-VAL-003
@@ -368,6 +408,7 @@ mod tests {
             max_batch_size: 32,
             max_queue_delay_us: 4000,
             intra_op_threads: 4,
+            queue_capacity: None,
             runtime: BridgeRuntimeKind::Blocking,
             seq_len_buckets: None,
             requires_attention_mask: false,
@@ -389,6 +430,7 @@ mod tests {
             max_batch_size: 32,
             max_queue_delay_us: 4000,
             intra_op_threads: 4,
+            queue_capacity: None,
             runtime: BridgeRuntimeKind::Blocking,
             seq_len_buckets: None,
             requires_attention_mask: false,
